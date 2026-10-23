@@ -50,7 +50,7 @@ def create_vector_embedding():
         )
 
 
-st.title("RAG Document Q&A With Groq And Lama3")
+st.title("RAG Document Q&A With Groq And GPT-oss-120b")
 
 user_prompt = st.text_input("Enter your query from the research paper")
 
