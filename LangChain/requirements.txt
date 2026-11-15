@@ -1,0 +1,56 @@
+# Core LangChain and notebook support
+langchain
+langchain-classic
+langchain-community
+langchain-core
+langchain-text-splitters
+ipykernel
+python-dotenv
+
+# Model providers and integrations
+langchain-openai
+openai
+langchain-ollama
+langchain-groq
+langchain-huggingface
+huggingface-hub
+sentence-transformers
+langchain-nvidia-ai-endpoints
+
+# Document loading and processing
+pypdf
+pymupdf
+unstructured
+beautifulsoup4
+arxiv
+wikipedia
+youtube-transcript-api
+pytube
+validators
+requests
+
+# Vector search and databases
+faiss-cpu
+chromadb
+langchain-chroma
+langchain-pinecone
+pinecone
+pinecone-text
+neo4j
+langchain-neo4j
+SQLAlchemy
+mysql-connector-python
+
+# Applications, serving, and agents
+streamlit
+gradio
+fastapi
+uvicorn
+langserve
+sse-starlette
+numexpr
+langgraph
+langsmith
+langchain-tavily
+crewai
+crewai-tools
