@@ -1,5 +1,20 @@
 from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain
 import re
+import time
+
+
+def invoke_with_retry(runnable, inputs, retries=3, wait=25):
+    for attempt in range(retries):
+        try:
+            return runnable.invoke(inputs)
+        except Exception as e:
+            is_429 = getattr(e, "status_code", None) == 429 or "Error code: 429" in str(
+                e
+            )
+            if is_429 and attempt < retries - 1:
+                time.sleep(wait)
+                continue
+            raise
 
 
 def run_research_pipeline(topic: str, progress_callback=None) -> dict:
@@ -71,10 +86,12 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
             elif tool_name in ("scrape_url", "scrape_urls"):
                 scraped_outputs.append(content)
 
-        # Preserve the Search Agent's final response too
-        final_search_response = get_text(messages[-1].content)
+        # # Preserve the Search Agent's final response too
+        # final_search_response = get_text(messages[-1].content)
 
-        state["search_results"] = "\n\n".join(search_outputs + [final_search_response])
+        # state["search_results"] = "\n\n".join(search_outputs + [final_search_response])
+
+        state["search_results"] = "\n\n".join(search_outputs)
 
         update_progress(1, "Search completed successfully!")
 
@@ -130,7 +147,8 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
 
         reader_agent = build_reader_agent()
 
-        reader_result = reader_agent.invoke(
+        reader_result = invoke_with_retry(
+            reader_agent,
             {
                 "messages": [
                     {
@@ -156,7 +174,7 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
                         """,
                     }
                 ]
-            }
+            },
         )
 
         state["scraped_content"] = get_text(reader_result["messages"][-1].content)
@@ -170,17 +188,14 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
 
         research_combined = f"""
         SEARCH RESULTS:
-        {search_context}
+        {state["search_results"][:1500]}
 
         READER ANALYSIS:
-        {state["scraped_content"]}
-
-        ORIGINAL SOURCE URLS:
-        {state["urls"]}
+        {state["scraped_content"][:6000]}
         """
 
-        state["report"] = writer_chain.invoke(
-            {"topic": topic, "research": research_combined}
+        state["report"] = invoke_with_retry(
+            writer_chain, {"topic": topic, "research": research_combined}
         )
 
         update_progress(3, "Research report generated!")
@@ -188,8 +203,10 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
         # CRITIC CHAIN
         update_progress(4, "Critic is evaluating the report...")
 
-        state["feedback"] = critic_chain.invoke(
-            {"report": state["report"], "research": research_combined}
+        critic_research = state["scraped_content"][:5000]
+
+        state["feedback"] = invoke_with_retry(
+            critic_chain, {"report": state["report"], "research": critic_research}
         )
 
         update_progress(4, "Report review completed!")

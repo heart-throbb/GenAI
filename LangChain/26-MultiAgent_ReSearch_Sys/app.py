@@ -166,9 +166,7 @@ if run_button:
 
     def progress_callback(step, message):
 
-        completed_steps.add(step)
-
-        progress_bar.progress(len(completed_steps) / len(stage_names))
+        progress_bar.progress((step - 1) / len(stage_names))
 
         stage_progress[step].markdown(f"🔄 **{stage_names[step]}** — {message}")
 

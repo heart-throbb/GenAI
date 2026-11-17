@@ -7,13 +7,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-llm = ChatGroq(model_name="openai/gpt-oss-120b", temperature=0,max_tokens=900)
+MODELS = {
+    "search": "openai/gpt-oss-120b",
+    "reader": "openai/gpt-oss-20b",
+    "writer": "qwen/qwen3.8-27b",
+    "critic": "openai/gpt-oss-120b",
+}
+
+
+def make_llm(role, max_tokens=None):
+    return ChatGroq(model_name=MODELS[role], temperature=0, max_tokens=max_tokens)
+
+
+search_llm = make_llm("search")
+reader_llm = make_llm("reader")
+writer_llm = make_llm("writer")
+critic_llm = make_llm("critic")
 
 
 # 1st agent
 def build_search_agent():
     return create_agent(
-        model=llm,
+        model=search_llm,
         tools=[web_search, scrape_url, scrape_urls],
         system_prompt="""
         You are an expert research assistant.
@@ -25,9 +40,9 @@ def build_search_agent():
 
         - Always use the web_search tool.
         - You may call web_search multiple times when necessary.
+        - Perform at most 2 searches, then scrape at most 4 URLs.
         - Each search can return up to 5 results.
-        - Prefer academic papers, research institutions,
-        government websites and reputable publications.
+        - Prefer academic papers, research institutions, government websites and reputable publications.
         - Find multiple relevant sources.
         - Preserve the exact source URLs.
         - Do not invent statistics or references.
@@ -39,8 +54,7 @@ def build_search_agent():
 
         1. Perform all necessary web searches first.
         2. Identify the most relevant URLs.
-        3. Once searching is complete, invoke scrape_urls
-        with the selected URLs.
+        3. Once searching is complete, invoke scrape_urls with the selected URLs.
         4. Treat scraping as your final tool action.
         5. Do not perform additional searches after scraping.
         """,
@@ -50,7 +64,7 @@ def build_search_agent():
 # 2nd agent
 def build_reader_agent():
     return create_agent(
-        model=llm,
+        model=reader_llm,
         tools=[],
         system_prompt="""
         You are an expert academic research analyst.
@@ -68,6 +82,7 @@ def build_reader_agent():
         - Clearly identify unavailable information.
         - Keep your response concise but informative.
         - Separate findings from different sources.
+        - Keep your notes under 450 words in total.
 
         Return structured research notes for the writer.
         """,
@@ -119,13 +134,13 @@ writer_prompt = ChatPromptTemplate.from_messages(
             6. Sources
                - List all cited sources and their original URLs.
 
-            Be detailed, factual and professional.
+            Be factual and professional. Keep the report under 600 words.
             """,
         ),
     ]
 )
 
-writer_chain = writer_prompt | llm | StrOutputParser()
+writer_chain = writer_prompt | writer_llm | StrOutputParser()
 
 
 # critic chain
@@ -185,4 +200,4 @@ critic_prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-critic_chain = critic_prompt | llm | StrOutputParser()
+critic_chain = critic_prompt | critic_llm | StrOutputParser()
