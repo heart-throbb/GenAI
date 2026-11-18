@@ -49,7 +49,8 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
 
         search_agent = build_search_agent()
 
-        search_result = search_agent.invoke(
+        search_result = invoke_with_retry(
+            search_agent,
             {
                 "messages": [
                     (
@@ -67,7 +68,7 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
                         """,
                     )
                 ]
-            }
+            },
         )
 
         messages = search_result["messages"]
@@ -85,11 +86,6 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
 
             elif tool_name in ("scrape_url", "scrape_urls"):
                 scraped_outputs.append(content)
-
-        # # Preserve the Search Agent's final response too
-        # final_search_response = get_text(messages[-1].content)
-
-        # state["search_results"] = "\n\n".join(search_outputs + [final_search_response])
 
         state["search_results"] = "\n\n".join(search_outputs)
 
@@ -184,11 +180,9 @@ def run_research_pipeline(topic: str, progress_callback=None) -> dict:
         # WRITER CHAIN
         update_progress(3, "Writer is generating the report...")
 
-        search_context = state["search_results"][:2500]
-
         research_combined = f"""
         SEARCH RESULTS:
-        {state["search_results"][:1500]}
+        {state["search_results"][:2000]}
 
         READER ANALYSIS:
         {state["scraped_content"][:6000]}
